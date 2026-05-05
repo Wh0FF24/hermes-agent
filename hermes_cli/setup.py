@@ -2050,6 +2050,80 @@ def _setup_slack():
         print_info("   Set SLACK_ALLOW_ALL_USERS=true or GATEWAY_ALLOW_ALL_USERS=true only if you intentionally want open workspace access.")
 
 
+def _setup_teams():
+    """Configure Microsoft Teams bot credentials.
+
+    Teams uses Microsoft Bot Framework + Azure Bot Service for delivery. The
+    Customer must register a Bot in Azure Bot Service (~1-2 hrs of IT effort)
+    and deploy the Atlas Pilot Teams app manifest before this wizard's
+    credentials become useful.
+    """
+    print_header("Microsoft Teams")
+    existing = get_env_value("TEAMS_BOT_ID")
+    if existing:
+        print_info("Microsoft Teams: already configured")
+        if not prompt_yes_no("Reconfigure Teams?", False):
+            return
+
+    print_info("Steps to register a Microsoft Teams bot (Customer-side IT):")
+    print_info("   1. Go to https://portal.azure.com → Azure Bot Service → Create")
+    print_info("      Choose 'Multi Tenant' bot type for typical M365 deployments.")
+    print_info("   2. Note the Microsoft App ID (= Bot ID) created during provisioning.")
+    print_info("   3. Under 'Configuration' → 'Manage Microsoft App ID' → create a")
+    print_info("      client secret. Save the value — Azure shows it only once.")
+    print_info("   4. Under 'Channels' → enable Microsoft Teams channel.")
+    print_info("   5. Deploy the Atlas Pilot Teams app manifest via Teams Admin")
+    print_info("      Center → Apps → Manage apps → Upload custom app.")
+    print_info("   6. Tenant admin grants consent for the app's Graph permissions.")
+    print()
+    print_info("   Full guide: see Atlas Pilot Onboarding doc → Teams Setup section")
+    print()
+
+    bot_id = prompt("Microsoft App ID (Bot ID, GUID format)")
+    if not bot_id:
+        return
+    save_env_value("TEAMS_BOT_ID", bot_id)
+
+    bot_password = prompt("Microsoft App Secret (client secret value)", password=True)
+    if not bot_password:
+        print_warning("Bot Password not provided — Teams will not authenticate. Run setup again to add it.")
+        return
+    save_env_value("TEAMS_BOT_PASSWORD", bot_password)
+
+    tenant_id = prompt("Azure AD Tenant ID (GUID format)")
+    if tenant_id:
+        save_env_value("TEAMS_TENANT_ID", tenant_id)
+
+    client_id = prompt("App Registration Client ID (often same as Bot ID — press Enter to reuse)")
+    save_env_value("TEAMS_CLIENT_ID", client_id or bot_id)
+
+    client_secret = prompt(
+        "App Registration Client Secret (often same as Bot Password — press Enter to reuse)",
+        password=True,
+    )
+    save_env_value("TEAMS_CLIENT_SECRET", client_secret or bot_password)
+
+    print_success("Microsoft Teams credentials saved")
+
+    print()
+    print_info("🔒 Security: Restrict who can use the Teams bot")
+    print_info("   Allowed user IDs are Microsoft Graph object IDs or UPNs (e.g., user@company.com)")
+    print()
+    allowed_users = prompt(
+        "Allowed Teams users (comma-separated UPNs or object IDs, leave empty to deny everyone except paired users)"
+    )
+    if allowed_users:
+        save_env_value("TEAMS_ALLOWED_USERS", allowed_users.replace(" ", ""))
+        print_success("Teams allowlist configured")
+    else:
+        print_warning("⚠️  No Teams allowlist set - unpaired users will be denied by default.")
+        print_info("   Set TEAMS_ALLOW_ALL_USERS=true or GATEWAY_ALLOW_ALL_USERS=true only if you intentionally want open tenant access.")
+
+    print()
+    print_info("Restart the gateway to pick up the new Teams configuration:")
+    print_info("   hermes gateway restart")
+
+
 def _write_slack_manifest_and_instruct():
     """Generate the Slack manifest, write it under HERMES_HOME, and print
     paste-into-Slack instructions.

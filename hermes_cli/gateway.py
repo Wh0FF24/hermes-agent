@@ -3892,6 +3892,7 @@ def _builtin_setup_fn(key: str):
         "telegram": _s._setup_telegram,
         "discord": _s._setup_discord,
         "slack": _s._setup_slack,
+        "teams": _s._setup_teams,
         "matrix": _s._setup_matrix,
         "mattermost": _s._setup_mattermost,
         "bluebubbles": _s._setup_bluebubbles,
